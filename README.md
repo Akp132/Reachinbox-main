@@ -157,24 +157,6 @@ Emails are labeled into:
 
 ---
 
-## 🚀 Hosting
-
-### Deploy Frontend on Vercel
-
-1. Push repo to GitHub
-2. Import frontend on [vercel.com](https://vercel.com/)
-3. Set `NEXT_PUBLIC_API_BASE_URL` in environment variables
-4. Build and deploy
-
-### Deploy Backend on Render
-
-1. Push backend repo to GitHub
-2. Import to [render.com](https://render.com/)
-3. Set all `.env` variables in the dashboard
-4. Link to Elasticsearch (local or Bonsai)
-
----
-
 ## ✅ Additional Notes
 
 * Real-time fetch is handled using `client.idle()` with ImapFlow
