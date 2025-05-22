@@ -191,8 +191,8 @@ export default function EmailsPage() {
             {suggestedReply && (
               <>
                 <h3>Suggested Reply:</h3>
-                <div style={{ background: '#f3f3f3', padding: '10px', borderRadius: '6px', marginTop: '10px' }}>
-                  <pre style={{ whiteSpace: 'pre-wrap' }}>{suggestedReply}</pre>
+                <div style={{ background: '#2a2a2a',color: '#f1f1f1', padding: '10px', borderRadius: '6px', marginTop: '10px',fontFamily: 'monospace' }}>
+                  <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{suggestedReply}</pre>
                 </div>
               </>
             )}

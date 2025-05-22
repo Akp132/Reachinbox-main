@@ -1,13 +1,12 @@
 import { ImapFlow, ImapFlowOptions, FetchMessageObject } from 'imapflow';
 import { simpleParser } from 'mailparser';
-import { v4 as uuid } from 'uuid';
+import { createHash } from 'crypto';
 import { categorizeEmail } from './aiCategorizer';
 import { ElasticService } from './elastic';
 import { SlackService } from './slack';
 import { fireInterestedWebhook } from './webhook';
 import { EmailDoc, EmailCategory } from '../models/email.types';
 import { logger } from './logger';
-import { createHash } from 'crypto';
 
 function parseBool(value: string | undefined): boolean {
   return value?.toLowerCase() === 'true';
@@ -30,14 +29,12 @@ const envAccounts = [
   },
 ];
 
-type Message = FetchMessageObject;
-
 function generateDeterministicId(account: string, folder: string, uid: number): string {
   return createHash('sha256').update(`${account}:${folder}:${uid}`).digest('hex');
 }
 
 async function buildEmailDoc(
-  msg: Message,
+  msg: FetchMessageObject,
   account: string,
   folder: string
 ): Promise<EmailDoc> {
@@ -72,14 +69,13 @@ async function buildEmailDoc(
 }
 
 async function processMessage(
-  message: Message,
+  message: FetchMessageObject,
   account: string,
   folder: string
 ): Promise<void> {
   const uid = message.uid!;
   const id = generateDeterministicId(account, folder, uid);
 
-  // 🔁 Check if already exists
   const alreadyExists = await ElasticService.checkIfEmailExists(id);
   if (alreadyExists) {
     logger.info({ id }, '⏭️ Skipping duplicate email');
@@ -148,16 +144,26 @@ export async function startImapSync(): Promise<void> {
 
       await client.mailboxOpen('INBOX', { readOnly: false });
 
-      // Fetch past 30 days
+      // 🔄 Fetch recent emails in reverse order (most recent first)
       const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);
-      for await (const message of client.fetch(
-        { since },
-        { envelope: true, source: true, uid: true, flags: true }
-      )) {
-        await processMessage(message, acc.user, 'INBOX');
+      const status = await client.status('INBOX', { uidNext: true });
+      const latestUid = (status.uidNext ?? 1) - 1;
+
+      for (let uid = latestUid; uid > 0; uid--) {
+        const uidStr = String(uid); // Fix for type error
+        const msg = await client.fetchOne(uidStr, {
+          envelope: true,
+          source: true,
+          uid: true,
+          flags: true,
+        });
+        if (!msg) continue;
+        if (msg.envelope?.date && msg.envelope.date < since) break;
+
+        await processMessage(msg, acc.user, 'INBOX');
       }
 
-      // Real-time idle mode
+      // 🔁 IDLE: Real-time sync
       while (true) {
         const idleSuccess = await client.idle();
         if (idleSuccess) {
