@@ -72,6 +72,8 @@ Now, based on the following email preview, provide only the correct **label** fr
 
     const label = (labelRaw ?? "").toLowerCase();
 
+    await new Promise((res) => setTimeout(res, 1200)); // ⏳ throttle here
+
     if (label.includes("interested")) return "Interested";
     if (label.includes("not interested")) return "Not Interested";
     if (label.includes("spam")) return "Spam";

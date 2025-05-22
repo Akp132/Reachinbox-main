@@ -3,6 +3,7 @@ import cors from "cors"; // ✅ Import CORS
 import { logger } from "./services/logger";
 import { ElasticService } from "./services/elastic";
 import { startImapSync } from "./services/imap";
+import replyRouter from './routes/reply';
 
 async function main() {
   await ElasticService.init();
@@ -23,6 +24,15 @@ async function main() {
     const hits = await ElasticService.search(q, account, folder);
     res.json(hits);
   });
+
+  // ✅ Hard test route to verify POST body parsing and routing
+  app.post("/test", (req: Request, res: Response) => {
+    console.log("🔥 /test route hit:", req.body);
+    res.json({ ok: true, received: req.body });
+  });
+
+  // ✅ Mount AI reply router
+  app.use("/", replyRouter);
 
   const port = 5070;
   app.listen(port, () => logger.info(`REST API http://localhost:${port}`));

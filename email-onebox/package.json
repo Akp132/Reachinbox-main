@@ -13,10 +13,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@dqbd/tiktoken": "^1.0.21",
     "@elastic/elasticsearch": "^8.13.0",
     "@slack/webhook": "^7.0.5",
     "@types/cors": "^2.8.18",
     "axios": "^1.9.0",
+    "chromadb": "^2.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",

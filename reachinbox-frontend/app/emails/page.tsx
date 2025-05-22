@@ -26,6 +26,8 @@ export default function EmailsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [suggestedReply, setSuggestedReply] = useState<string>('');
+  const [loadingReply, setLoadingReply] = useState(false);
 
   const fetchEmails = async () => {
     const url = new URL('http://localhost:5070/emails');
@@ -62,6 +64,24 @@ export default function EmailsPage() {
     setEmails(sorted);
   };
 
+  const fetchSuggestedReply = async (text: string) => {
+    setLoadingReply(true);
+    setSuggestedReply('');
+    try {
+      const res = await fetch('http://localhost:5070/suggest-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: text }),
+      });
+      const data = await res.json();
+      setSuggestedReply(data.reply || 'No reply generated.');
+    } catch (err) {
+      setSuggestedReply('❌ Failed to fetch reply.');
+    } finally {
+      setLoadingReply(false);
+    }
+  };
+
   const filteredEmails = aiLabelFilter
     ? emails.filter((email) => email.labels?.ai === aiLabelFilter)
     : emails;
@@ -74,28 +94,25 @@ export default function EmailsPage() {
   const totalPages = Math.ceil(filteredEmails.length / ITEMS_PER_PAGE);
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4 text-white">📬 Inbox</h1>
+    <div style={{ padding: '20px' }}>
+      <h1>📬 Inbox</h1>
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div style={{ marginBottom: '16px' }}>
         <input
           type="text"
           placeholder="Search..."
-          className="px-3 py-2 border rounded bg-gray-800 text-white"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <input
           type="text"
           placeholder="Account"
-          className="px-3 py-2 border rounded bg-gray-800 text-white"
           value={account}
           onChange={(e) => setAccount(e.target.value)}
         />
         <select
           value={aiLabelFilter}
           onChange={(e) => setAiLabelFilter(e.target.value)}
-          className="px-3 py-2 border rounded bg-gray-800 text-white"
         >
           <option value="">All AI Labels</option>
           <option value="Interested">Interested</option>
@@ -105,51 +122,43 @@ export default function EmailsPage() {
           <option value="Out of Office">Out of Office</option>
           <option value="Unlabelled">Unlabelled</option>
         </select>
-        <button
-          onClick={handleSearch}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Search
-        </button>
-        <button
-          onClick={handleToggleSort}
-          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-        >
+        <button onClick={handleSearch}>Search</button>
+        <button onClick={handleToggleSort}>
           Sort: {sortOrder === 'asc' ? 'Oldest' : 'Newest'}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {paginatedEmails.map((email) => (
-          <div
-            key={email.id}
-            onClick={() => setSelectedEmail(email)}
-            className="bg-gray-800 text-white p-4 rounded-lg shadow hover:shadow-lg cursor-pointer transition"
-          >
-            <p className="font-semibold text-lg mb-2">{email.subject}</p>
-            <p><strong>From:</strong> {email.from}</p>
-            <p><strong>To:</strong> {email.to}</p>
-            <p><strong>Date:</strong> {new Date(email.date).toLocaleString()}</p>
-            <p><strong>AI Label:</strong> {email.labels?.ai || 'Unlabelled'}</p>
-          </div>
-        ))}
-      </div>
+      {paginatedEmails.map((email) => (
+        <div
+          key={email.id}
+          className="email-card"
+          onClick={() => {
+            setSelectedEmail(email);
+            setSuggestedReply('');
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          <p><strong>Subject:</strong> {email.subject}</p>
+          <p><strong>From:</strong> {email.from}</p>
+          <p><strong>To:</strong> {email.to}</p>
+          <p><strong>Date:</strong> {new Date(email.date).toLocaleString()}</p>
+          <p><strong>AI Label:</strong> {email.labels?.ai || 'Unlabelled'}</p>
+        </div>
+      ))}
 
-      <div className="flex justify-center items-center gap-4 mt-6 text-white">
+      <div style={{ marginTop: '20px' }}>
         <button
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
           disabled={currentPage === 1}
-          className="px-4 py-2 bg-gray-700 rounded disabled:opacity-50"
         >
           Previous
         </button>
-        <span>
+        <span style={{ margin: '0 12px' }}>
           Page {currentPage} of {totalPages}
         </span>
         <button
           onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
           disabled={currentPage === totalPages}
-          className="px-4 py-2 bg-gray-700 rounded disabled:opacity-50"
         >
           Next
         </button>
@@ -157,9 +166,9 @@ export default function EmailsPage() {
 
       {selectedEmail && (
         <>
-          <div className="fixed inset-0 bg-black bg-opacity-60 z-40" onClick={() => setSelectedEmail(null)} />
-          <div className="fixed z-50 bg-white dark:bg-gray-900 text-black dark:text-white p-6 rounded-lg shadow-xl top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl">
-            <h2 className="text-2xl font-bold mb-4">Email Preview</h2>
+          <div className="modal-overlay" onClick={() => setSelectedEmail(null)} />
+          <div className="modal">
+            <h2>Email Preview</h2>
             <p><strong>Subject:</strong> {selectedEmail.subject}</p>
             <p><strong>From:</strong> {selectedEmail.from}</p>
             <p><strong>To:</strong> {selectedEmail.to}</p>
@@ -167,14 +176,26 @@ export default function EmailsPage() {
             <p><strong>Folder:</strong> {selectedEmail.folder}</p>
             <p><strong>Account:</strong> {selectedEmail.account}</p>
             <p><strong>AI Label:</strong> {selectedEmail.labels?.ai}</p>
-            <hr className="my-4" />
-            <pre className="whitespace-pre-wrap">{selectedEmail.text}</pre>
+            <hr />
+            <pre style={{ whiteSpace: 'pre-wrap' }}>{selectedEmail.text}</pre>
             <button
-              onClick={() => setSelectedEmail(null)}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              onClick={() => fetchSuggestedReply(selectedEmail.text)}
+              style={{ marginTop: '12px' }}
+              disabled={loadingReply}
             >
-              Close
+              {loadingReply ? 'Generating Reply...' : 'Suggest AI Reply'}
             </button>
+
+            {suggestedReply && (
+              <>
+                <h3>Suggested Reply:</h3>
+                <div style={{ background: '#f3f3f3', padding: '10px', borderRadius: '6px', marginTop: '10px' }}>
+                  <pre style={{ whiteSpace: 'pre-wrap' }}>{suggestedReply}</pre>
+                </div>
+              </>
+            )}
+
+            <button onClick={() => setSelectedEmail(null)} style={{ marginTop: '12px' }}>Close</button>
           </div>
         </>
       )}
