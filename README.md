@@ -50,12 +50,13 @@ Reachinbox-main/
 
 - 🔁 **Real-Time IMAP Syncing** using `IDLE` (no cron jobs!)
 - 🧠 **AI-Powered Email Categorization** with Groq's LLaMA-3
-- 🤖 **Suggested Replies** using LLM
+- 🤖 **AI-Suggested Replies** using LLM
 - 🔍 **Full-text Search** via Elasticsearch
 - 📨 **Slack + Webhook Notifications** for Interested leads
 - ✅ Duplicate-safe indexing using UID-based hashes
 - 🧭 Filters: By Account, AI Label, Sort Order
 - 🧑‍💻 Frontend: Modern responsive UI with modals and reply generation
+
 
 ---
 
