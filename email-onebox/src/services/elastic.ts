@@ -8,6 +8,7 @@ const client = new Client({ node: env.elastic.node });
 const INDEX = "emails";
 
 export const ElasticService = {
+
   async init() {
     const exists = await client.indices.exists({ index: INDEX });
     if (!exists) {
@@ -33,6 +34,14 @@ export const ElasticService = {
     }
   },
 
+   async checkIfEmailExists(id: string): Promise<boolean> {
+    const result = await client.exists({
+      index: 'emails',
+      id,
+    });
+    return result;
+  },
+
   async saveEmail(doc: EmailDoc) {
     await client.index({ index: INDEX, id: doc.id, document: doc });
     logger.debug({ id: doc.id }, "Indexed email");
@@ -51,4 +60,20 @@ export const ElasticService = {
     });
     return res.hits.hits.map(h => h._source!);
   },
+
+  async clearIndex() {
+    const exists = await client.indices.exists({ index: INDEX });
+    if (exists) {
+      await client.indices.delete({ index: INDEX });
+      logger.info("🗑️ Deleted Elasticsearch index 'emails'");
+      await this.init(); // Recreate the index
+      logger.info("✅ Recreated Elasticsearch index 'emails'");
+    } else {
+      logger.warn("⚠️ Tried to clear index but it does not exist.");
+    }
+  },
+
+
 };
+
+

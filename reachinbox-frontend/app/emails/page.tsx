@@ -42,6 +42,7 @@ export default function EmailsPage() {
         : new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     setEmails(sorted);
+    setSortOrder('desc');
     setCurrentPage(1);
   };
 
@@ -126,6 +127,7 @@ export default function EmailsPage() {
         <button onClick={handleToggleSort}>
           Sort: {sortOrder === 'asc' ? 'Oldest' : 'Newest'}
         </button>
+        <button onClick={fetchEmails}>🔁 Refresh Inbox</button>
       </div>
 
       {paginatedEmails.map((email) => (

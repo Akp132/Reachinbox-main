@@ -7,6 +7,7 @@ import { SlackService } from './slack';
 import { fireInterestedWebhook } from './webhook';
 import { EmailDoc, EmailCategory } from '../models/email.types';
 import { logger } from './logger';
+import { createHash } from 'crypto';
 
 function parseBool(value: string | undefined): boolean {
   return value?.toLowerCase() === 'true';
@@ -31,6 +32,10 @@ const envAccounts = [
 
 type Message = FetchMessageObject;
 
+function generateDeterministicId(account: string, folder: string, uid: number): string {
+  return createHash('sha256').update(`${account}:${folder}:${uid}`).digest('hex');
+}
+
 async function buildEmailDoc(
   msg: Message,
   account: string,
@@ -50,8 +55,11 @@ async function buildEmailDoc(
   const to = msg.envelope?.to?.map((a: any) => a?.address ?? '').join(',') ?? '';
   const date = msg.envelope?.date ?? new Date();
 
+  const uid = msg.uid!;
+  const id = generateDeterministicId(account, folder, uid);
+
   return {
-    id: uuid(),
+    id,
     account,
     folder,
     subject,
@@ -68,6 +76,16 @@ async function processMessage(
   account: string,
   folder: string
 ): Promise<void> {
+  const uid = message.uid!;
+  const id = generateDeterministicId(account, folder, uid);
+
+  // 🔁 Check if already exists
+  const alreadyExists = await ElasticService.checkIfEmailExists(id);
+  if (alreadyExists) {
+    logger.info({ id }, '⏭️ Skipping duplicate email');
+    return;
+  }
+
   const doc = await buildEmailDoc(message, account, folder);
   const raw = await categorizeEmail(doc.text);
 
@@ -139,7 +157,7 @@ export async function startImapSync(): Promise<void> {
         await processMessage(message, acc.user, 'INBOX');
       }
 
-      // Enter real-time sync mode
+      // Real-time idle mode
       while (true) {
         const idleSuccess = await client.idle();
         if (idleSuccess) {
@@ -147,7 +165,7 @@ export async function startImapSync(): Promise<void> {
           if ((status.unseen ?? 0) > 0) {
             const messages = client.fetch(
               { seen: false },
-              { envelope: true, source: true }
+              { envelope: true, source: true, uid: true }
             );
             for await (const msg of messages) {
               await processMessage(msg, acc.user, 'INBOX');

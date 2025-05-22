@@ -25,6 +25,16 @@ async function main() {
     res.json(hits);
   });
 
+  app.delete('/emails', async (_req: Request, res: Response) => {
+    try {
+      await ElasticService.clearIndex();
+      res.json({ message: 'Emails index cleared.' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to clear emails index' });
+    }
+  });
+
   // ✅ Hard test route to verify POST body parsing and routing
   app.post("/test", (req: Request, res: Response) => {
     console.log("🔥 /test route hit:", req.body);
